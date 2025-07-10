@@ -34,13 +34,18 @@ private:
 
   void _Extend();
   void _Slide(void* b, void* m, void* e);
+  //Check if its correct to execute any function that modifies or uses _pData
+  void _Check();
 public:
   darray();
   darray(long long n);
   darray(long long n, const T& val);
-  //TODO(kei): Add assign copy and move, remake them to call objects' move and copy ctors (maybe not, havent decided yet)
   darray(const darray& other);
+  //Doesnt call elements' move ctors
   darray(darray&& other);
+  //Doesnt call elements' move ctors
+  darray& operator=(darray&& other);
+  darray& operator=(const darray& other);
   darray(std::initializer_list<T>&& other);
 
   ~darray();
@@ -48,6 +53,10 @@ public:
   //Wrapping - [-1] becomes [n - 1], python style
   //But [n] will not wrap
   T& operator[](long long i);
+
+  //Wrapping - [-1] becomes [n - 1], python style
+  //But [n] will not wrap
+  const T& operator[](long long i) const;
 
   void push_back(const T& v);
 
@@ -78,7 +87,6 @@ public:
 
   void clear();
 
-  T* operator&();
   T* data();
 };
 
@@ -91,10 +99,13 @@ darray<T>::darray()
 
 template<class T>
 darray<T>::darray(const darray& other)
-: _pData(nullptr), _n(other._n), _allocN(other._allocN){
+: _pData(nullptr), _n(0), _allocN(other._allocN){
   _pData = malloc(sizeof(T) * _n);
-  std::memcpy(_pData, other._pData, sizeof(T) * _n);
   assert(_pData != nullptr);
+
+  for (long long i = 0; i < _n; ++i){
+    push_back(other._pData[i]);
+  }
 }
 
 template<class T>
@@ -113,7 +124,7 @@ darray<T>::darray(std::initializer_list<T>&& other)
   assert(_pData != nullptr);
 
   for (auto&& i : other){
-    this->push_back(i);
+    push_back(i);
   }
 }
 
@@ -136,13 +147,48 @@ darray<T>::darray(long long n, const T& val)
 }
 
 template<class T>
+darray<T>& darray<T>::operator=(darray&& other){
+  if (_pData != nullptr){ //If moved
+    clear();
+    free(_pData);
+  }
+
+  _n = other._n;
+  _allocN = other._allocN;
+  _pData = other._pData;
+
+  other._pData = nullptr;
+}
+
+template<class T>
+darray<T>& darray<T>::operator=(const darray& other){
+  if (_pData != nullptr){ //If moved
+    clear();
+    free(_pData);
+  }
+
+  _n = other._n;
+  _allocN = other._allocN;
+
+  _pData = malloc(sizeof(T) * _n);
+  assert(_pData != nullptr);
+
+  for (long long i = 0; i < _n; ++i){
+    push_back(other._pData[i]);
+  }
+}
+
+template<class T>
 darray<T>::~darray(){
-  clear();
-  free(_pData);
+  if (_pData != nullptr){ //After moved
+    clear();
+    free(_pData);
+  }
 }
 
 template<class T>
 T& darray<T>::operator[](long long i){
+  _Check();
   assert(((i + _n) % _n) >= 0);
 
   if (i >= 0) return _pData[i];
@@ -151,6 +197,7 @@ T& darray<T>::operator[](long long i){
 
 template<class T>
 void darray<T>::push_back(const T& v){
+  _Check();
   if (_n == _allocN){
     _Extend();
   }
@@ -162,6 +209,7 @@ void darray<T>::push_back(const T& v){
 template<class T>
 template<class...Ts>
 void darray<T>::emplace_back(Ts&&... vs){
+  _Check();
   if (_n == _allocN){
     _Extend();
   }
@@ -172,6 +220,7 @@ void darray<T>::emplace_back(Ts&&... vs){
 
 template<class T>
 void darray<T>::push_front(const T& v){
+  _Check();
   if (_n == _allocN){
     _Extend();
   }
@@ -185,6 +234,7 @@ void darray<T>::push_front(const T& v){
 template<class T>
 template<class...Ts>
 void darray<T>::emplace_front(Ts&&... vs){
+  _Check();
   if (_n == _allocN){
     _Extend();
   }
@@ -197,6 +247,7 @@ void darray<T>::emplace_front(Ts&&... vs){
 
 template<class T>
 void darray<T>::pop_back(){
+  _Check();
   assert(_n != 0);
   --_n;
   _pData[_n].~T();
@@ -204,6 +255,7 @@ void darray<T>::pop_back(){
 
 template<class T>
 void darray<T>::pop_front(){
+  _Check();
   assert(_n != 0);
 
   if (_n != 1){
@@ -216,6 +268,7 @@ void darray<T>::pop_front(){
 
 template<class T>
 void darray<T>::push(long long index, const T& v){
+  _Check();
   if (_n == _allocN){
     _Extend();
   }
@@ -229,6 +282,7 @@ void darray<T>::push(long long index, const T& v){
 template<class T>
 template<class...Ts>
 void darray<T>::emplace(long long index, Ts&&... vs){
+  _Check();
   if (_n == _allocN){
     _Extend();
   }
@@ -241,6 +295,7 @@ void darray<T>::emplace(long long index, Ts&&... vs){
 
 template<class T>
 void darray<T>::pop(long long index){
+  _Check();
   _Slide(_pData + index, _pData + _n - 1, _pData + _n);
   --_n;
   _pData[_n].~T();
@@ -248,31 +303,31 @@ void darray<T>::pop(long long index){
 
 template<class T>
 bool darray<T>::contains(const T& v) const{
+  _Check();
   return index_of(v) != -1;
 }
 
 template<class T>
 long long darray<T>::index_of(const T& v) const{
+  _Check();
   return kd::lsearch(v, *this);
 }
 
 template<class T>
-T* darray<T>::operator&(){
-  return _pData;
-}
-
-template<class T>
 T* darray<T>::data(){
+  _Check();
   return _pData;
 }
 
 template<class T>
 long long darray<T>::length() const{
+  _Check();
   return _n;
 }
 
 template<class T>
 void darray<T>::clear(){
+  _Check();
   for (int i = 0; i < _n; ++i){
     pop_back();
   }
@@ -291,11 +346,16 @@ template<class T>
 void darray<T>::_Slide(void* b, void* m, void* e){
   unsigned long long bmSize = (unsigned long long)m - (unsigned long long)b;
   unsigned long long meSize = (unsigned long long)e - (unsigned long long)m;
-  char buf[bmSize]; //TODO(kei): fix this, variable sized arrays arent a thing
+  char* pBuf = (char*)malloc(bmSize);
 
-  std::memcpy(buf, b, bmSize);
+  std::memcpy(pBuf, b, bmSize);
   std::memmove(b, m, meSize);
-  std::memcpy((char*)b + meSize, buf, bmSize);
+  std::memcpy((char*)b + meSize, pBuf, bmSize);
+}
+
+template<class T>
+void darray<T>::_Check(){
+  assert(_pData != nullptr); //Access after moved
 }
 
 };
