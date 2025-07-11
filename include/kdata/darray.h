@@ -34,8 +34,6 @@ private:
 
   void _Extend();
   void _Slide(void* b, void* m, void* e);
-  //Check if its correct to execute any function that modifies or uses _pData
-  void _Check();
 public:
   darray();
   darray(long long n);
@@ -93,7 +91,7 @@ public:
 template<class T>
 darray<T>::darray()
 : _pData(nullptr), _n(0), _allocN(4){
-  _pData = malloc(sizeof(T) * _allocN);
+  _pData = (T*)malloc(sizeof(T) * _allocN);
   assert(_pData != nullptr);
 }
 
@@ -103,7 +101,8 @@ darray<T>::darray(const darray& other)
   _pData = malloc(sizeof(T) * _n);
   assert(_pData != nullptr);
 
-  for (long long i = 0; i < _n; ++i){
+  long long n = _n;
+  for (long long i = 0; i < n; ++i){
     push_back(other._pData[i]);
   }
 }
@@ -141,7 +140,7 @@ darray<T>::darray(long long n, const T& val)
   _pData = malloc(sizeof(T) * _allocN);
   assert(_pData != nullptr);
 
-  for (int i = 0; i < n; ++i){
+  for (long long i = 0; i < n; ++i){
     this->push_back(val);
   }
 }
@@ -173,7 +172,8 @@ darray<T>& darray<T>::operator=(const darray& other){
   _pData = malloc(sizeof(T) * _n);
   assert(_pData != nullptr);
 
-  for (long long i = 0; i < _n; ++i){
+  long long n = _n;
+  for (long long i = 0; i < n; ++i){
     push_back(other._pData[i]);
   }
 }
@@ -188,7 +188,14 @@ darray<T>::~darray(){
 
 template<class T>
 T& darray<T>::operator[](long long i){
-  _Check();
+  assert(((i + _n) % _n) >= 0);
+
+  if (i >= 0) return _pData[i];
+              return _pData[((i + _n) % _n)]; //Wrapping - [-1] becomes [n - 1], python style
+}
+
+template<class T>
+const T& darray<T>::operator[](long long i) const{
   assert(((i + _n) % _n) >= 0);
 
   if (i >= 0) return _pData[i];
@@ -197,7 +204,6 @@ T& darray<T>::operator[](long long i){
 
 template<class T>
 void darray<T>::push_back(const T& v){
-  _Check();
   if (_n == _allocN){
     _Extend();
   }
@@ -209,7 +215,6 @@ void darray<T>::push_back(const T& v){
 template<class T>
 template<class...Ts>
 void darray<T>::emplace_back(Ts&&... vs){
-  _Check();
   if (_n == _allocN){
     _Extend();
   }
@@ -220,7 +225,6 @@ void darray<T>::emplace_back(Ts&&... vs){
 
 template<class T>
 void darray<T>::push_front(const T& v){
-  _Check();
   if (_n == _allocN){
     _Extend();
   }
@@ -234,7 +238,6 @@ void darray<T>::push_front(const T& v){
 template<class T>
 template<class...Ts>
 void darray<T>::emplace_front(Ts&&... vs){
-  _Check();
   if (_n == _allocN){
     _Extend();
   }
@@ -247,7 +250,6 @@ void darray<T>::emplace_front(Ts&&... vs){
 
 template<class T>
 void darray<T>::pop_back(){
-  _Check();
   assert(_n != 0);
   --_n;
   _pData[_n].~T();
@@ -255,7 +257,6 @@ void darray<T>::pop_back(){
 
 template<class T>
 void darray<T>::pop_front(){
-  _Check();
   assert(_n != 0);
 
   if (_n != 1){
@@ -268,7 +269,6 @@ void darray<T>::pop_front(){
 
 template<class T>
 void darray<T>::push(long long index, const T& v){
-  _Check();
   if (_n == _allocN){
     _Extend();
   }
@@ -282,7 +282,6 @@ void darray<T>::push(long long index, const T& v){
 template<class T>
 template<class...Ts>
 void darray<T>::emplace(long long index, Ts&&... vs){
-  _Check();
   if (_n == _allocN){
     _Extend();
   }
@@ -295,7 +294,6 @@ void darray<T>::emplace(long long index, Ts&&... vs){
 
 template<class T>
 void darray<T>::pop(long long index){
-  _Check();
   _Slide(_pData + index, _pData + _n - 1, _pData + _n);
   --_n;
   _pData[_n].~T();
@@ -303,32 +301,28 @@ void darray<T>::pop(long long index){
 
 template<class T>
 bool darray<T>::contains(const T& v) const{
-  _Check();
   return index_of(v) != -1;
 }
 
 template<class T>
 long long darray<T>::index_of(const T& v) const{
-  _Check();
   return kd::lsearch(v, *this);
 }
 
 template<class T>
 T* darray<T>::data(){
-  _Check();
   return _pData;
 }
 
 template<class T>
 long long darray<T>::length() const{
-  _Check();
   return _n;
 }
 
 template<class T>
 void darray<T>::clear(){
-  _Check();
-  for (int i = 0; i < _n; ++i){
+  long long n = _n;
+  for (long long i = 0; i < n; ++i){
     pop_back();
   }
 }
@@ -337,7 +331,7 @@ template<class T>
 void darray<T>::_Extend(){
   _allocN *= 2;
 
-  _pData = realloc(_pData, sizeof(T) * _allocN);
+  _pData = (T*)realloc(_pData, sizeof(T) * _allocN);
 
   assert(_pData != nullptr);
 }
@@ -351,11 +345,6 @@ void darray<T>::_Slide(void* b, void* m, void* e){
   std::memcpy(pBuf, b, bmSize);
   std::memmove(b, m, meSize);
   std::memcpy((char*)b + meSize, pBuf, bmSize);
-}
-
-template<class T>
-void darray<T>::_Check(){
-  assert(_pData != nullptr); //Access after moved
 }
 
 };
