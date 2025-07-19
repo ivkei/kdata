@@ -1,5 +1,3 @@
-#pragma once
-
 #ifndef _KDATA_DARRAY_H
 #define _KDATA_DARRAY_H
 
@@ -11,15 +9,14 @@
 
 #include"utils.h"
 
-#ifndef NDEBUG
+#ifdef _KDATA_ENABLE_ASSERTS
 #define assert(x)\
   if (!(x)){\
     printf("Assertion failed, line: %d, file: \"%s\"!\n", __LINE__, __FILE__);\
     exit(1);\
   }
 #else
-#define assert(x)\
-  if (!(x)) throw std::runtime_error("Assertion failed");
+#define assert(x)
 #endif
 
 namespace kd{
