@@ -15,7 +15,7 @@ clang++ tests/<datastruct>.cpp -o build/<datastruct>
 ```
 
 ## API
-* To enable assertions define _KDATA_ENABLE_ASSERTS before a header.
+* To enable assertions define `_KDATA_ENABLE_ASSERTS` before a header.
 * The rest is like in STL, except length, and a few more functions.
 
 ## Contributors
