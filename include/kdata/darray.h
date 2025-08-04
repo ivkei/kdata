@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef _KDATA_DARRAY_H
 #define _KDATA_DARRAY_H
 
@@ -45,6 +47,7 @@ public:
 
   ~darray();
 
+  //TODO(kei): delete wrapping?
   //Wrapping - [-1] becomes [n - 1], python style
   //But [n] will not wrap
   T& operator[](long long i);
